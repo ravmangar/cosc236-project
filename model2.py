@@ -2,6 +2,8 @@ from OMPython import OMCSessionZMQ, ModelicaSystem
 import numpy as np
 import pandas as pd
 from functools import lru_cache
+import itertools
+import csv
 
 # Setup
 omc = OMCSessionZMQ()
@@ -47,7 +49,7 @@ def simulate_acs(devices):
     mod.setParameters(param_list)
     mod.setSimulationOptions([
         "startTime=0",
-        "stopTime=3600",
+        "stopTime=5000",
         "tolerance=1e-6"
     ])
 
@@ -106,22 +108,22 @@ def simulate_acs(devices):
 
 
 DEVICES_TIMES = [
-    ('AC1', 100), ('AC1', 500), ('AC1', 1000),
-    ('AC2', 100), ('AC2', 500), ('AC2', 1000),
-	('AC3', 100), ('AC3', 500), ('AC3', 1000),
-    ('AC4', 100), ('AC4', 500), ('AC4', 1000),
-	('AC5', 100), ('AC5', 500), ('AC5', 1000),
-    ('AC6', 100), ('AC6', 500), ('AC6', 1000),
-	('AC7', 100), ('AC7', 500), ('AC7', 1000),
-    ('AC8', 100), ('AC8', 500), ('AC8', 1000),
-    ('DH1', 100), ('DH1', 500), ('DH1', 1000),
-    ('DH2', 100), ('DH2', 500), ('DH2', 1000),
-	('DH3', 100), ('DH3', 500), ('DH3', 1000),
-    ('DH4', 100), ('DH4', 500), ('DH4', 1000),
-	('DH5', 100), ('DH5', 500), ('DH5', 1000),
-    ('DH6', 100), ('DH6', 500), ('DH6', 1000),
-	('DH7', 100), ('DH7', 500), ('DH7', 1000),
-    ('DH8', 100), ('DH8', 500), ('DH8', 1000)
+    ('AC1', 100), ('AC1', 500), ('AC1', 1000), ('AC1', 2000), ('AC1', 75), ('AC1', 3000),
+    ('AC2', 100), ('AC2', 500), ('AC2', 1000), ('AC2', 2000), ('AC2', 75), ('AC2', 3000),
+	('AC3', 100), ('AC3', 500), ('AC3', 1000), ('AC3', 2000), ('AC3', 75), ('AC3', 3000),
+    ('AC4', 100), ('AC4', 500), ('AC4', 1000), ('AC4', 2000), ('AC4', 75), ('AC4', 3000),
+	('AC5', 100), ('AC5', 500), ('AC5', 1000), ('AC5', 2000), ('AC5', 75), ('AC5', 3000),
+    ('AC6', 100), ('AC6', 500), ('AC6', 1000), ('AC6', 2000), ('AC6', 75), ('AC6', 3000),
+	('AC7', 100), ('AC7', 500), ('AC7', 1000), ('AC7', 2000), ('AC7', 75), ('AC7', 3000),
+    ('AC8', 100), ('AC8', 500), ('AC8', 1000), ('AC8', 2000), ('AC8', 75), ('AC8', 3000),
+    ('DH1', 100), ('DH1', 500), ('DH1', 1000), ('DH1', 2000), ('DH1', 75), ('DH1', 175), ('DH1', 50),
+    ('DH2', 100), ('DH2', 500), ('DH2', 1000), ('DH2', 2000), ('DH2', 75), ('DH2', 175), ('DH2', 50),
+	('DH3', 100), ('DH3', 500), ('DH3', 1000), ('DH3', 2000), ('DH3', 75), ('DH3', 175), ('DH3', 50),
+    ('DH4', 100), ('DH4', 500), ('DH4', 1000), ('DH4', 2000), ('DH4', 75), ('DH4', 175), ('DH4', 50),
+	('DH5', 100), ('DH5', 500), ('DH5', 1000), ('DH5', 2000), ('DH5', 75), ('DH5', 175), ('DH5', 50),
+    ('DH6', 100), ('DH6', 500), ('DH6', 1000), ('DH6', 2000), ('DH6', 75), ('DH6', 175), ('DH6', 50),
+	('DH7', 100), ('DH7', 500), ('DH7', 1000), ('DH7', 2000), ('DH7', 75), ('DH7', 175), ('DH7', 50),
+    ('DH8', 100), ('DH8', 500), ('DH8', 1000), ('DH8', 2000), ('DH8', 75), ('DH8', 175), ('DH8', 50)
 
 ]
 
@@ -213,7 +215,7 @@ def harmonic_number(n):
 def GreedyDualChargingMulti(pairs, target_temp=None, target_humidity=None):
     def combined_drop(S):
         temp = temp_drop_submodular(S) if target_temp else 0
-        hum = humidity_drop_submodular(S) if target_humidity else 0
+        hum = humidity_drop_submodular(S) * 100 if target_humidity else 0
         return temp, hum
 
     def still_needed(S):
@@ -239,8 +241,22 @@ def GreedyDualChargingMulti(pairs, target_temp=None, target_humidity=None):
     C = set()
     dual = {}
 
-    beta = max(temp_drop_submodular({p}) if target_temp else 0 for p in pairs)
-    H_beta = harmonic_number(int(beta)) if target_temp else 1
+    #beta = max(temp_drop_submodular({p}) if target_temp else 0 for p in pairs)
+    # beta = 0.0
+    # for p in pairs:
+    #     temp_gain = temp_drop_submodular({p}) if target_temp else 0
+    #     hum_gain = humidity_drop_submodular({p}) if target_humidity else 0
+    #     total_gain = temp_gain + hum_gain
+    #     beta = max(beta, total_gain)
+    #
+    # H_beta = harmonic_number(int(np.ceil(beta))) if beta > 0 else 1
+    beta = 0.0
+    if target_temp:
+        beta += target_temp
+    if target_humidity:
+        beta += target_humidity
+
+    H_beta = harmonic_number(int(np.ceil(beta))) if beta > 0 else 1
 
     while True:
         temp_needed, hum_needed = still_needed(C)
@@ -273,8 +289,17 @@ def GreedyDualChargingMulti(pairs, target_temp=None, target_humidity=None):
             raise RuntimeError("No remaining useful pairs. Cannot meet target.")
 
         key = frozenset(C)
-        temp_gain, _ = gain(C, best_pair)
-        dual_val = get_cost(best_pair) / (temp_gain if temp_gain > 0 else 1)
+        temp_gain, hum_gain = gain(C, best_pair)
+        total_gain = 0.0
+        if target_temp:
+            total_gain += temp_gain
+        if target_humidity:
+            total_gain += hum_gain
+
+        if total_gain == 0:
+            raise RuntimeError("Zero gain for selected pair.")
+
+        dual_val = get_cost(best_pair) / total_gain
         dual[key] = dual_val / H_beta if target_temp else dual_val
 
         C.add(best_pair)
@@ -293,28 +318,73 @@ def prune_pairs(C):
 
 # === DRIVER CODE ===
 if __name__ == "__main__":
-    TARGET_TEMP_DROP = 12.0  # desired temperature drop
-    TARGET_HUMIDITY_DROP = 0.5
+
+    # Ranges for experiments
+    TEMP_RANGE = np.linspace(8.0, 18.0, 50)
+    HUMIDITY_RANGE = np.linspace(0.005, 0.1, 10)
+
+    # Create all combinations
+    experiment_grid = list(itertools.product(TEMP_RANGE, HUMIDITY_RANGE))
+
+    print(experiment_grid)
+
+    # Results list
+    experiment_results = []
+
+    # Run experiments
+    for target_temp, target_hum in experiment_grid:
+        print(f"\n=== Running for Temp={target_temp:.2f}°C, Humidity={target_hum:.3f} ===")
+
+        try:
+            schedule, dual_y, beta, H_beta = GreedyDualChargingMulti(
+                DEVICES_TIMES,
+                target_temp=target_temp,
+                target_humidity=target_hum
+            )
+
+            cost_schedule = sum(get_cost(p) for p in schedule)
+            dual_value = 0.0
+            for A, val in dual_y.items():
+                temp_deficit = target_temp - temp_drop_submodular(set(A)) if target_temp else 0
+                humidity_deficit = target_hum - humidity_drop_submodular(set(A)) if target_hum else 0
+                dual_value += (temp_deficit + humidity_deficit) * val
+
+            approx_ratio = cost_schedule / dual_value if dual_value > 0 else None
+            achieved_temp = temp_drop_submodular(schedule)
+            achieved_hum = humidity_drop_submodular(schedule)
+
+            experiment_results.append({
+                "target_temp_drop": round(target_temp, 2),
+                "target_humidity_drop": round(target_hum, 3),
+                "achieved_temp_drop": round(achieved_temp, 3),
+                "achieved_humidity_drop": round(achieved_hum, 3),
+                "total_cost_kWh": round(cost_schedule, 4),
+                "dual_value": round(dual_value, 4),
+                "approx_ratio": round(approx_ratio, 4) if approx_ratio else None,
+                "beta": round(beta, 4),
+                "H_beta": round(H_beta, 4),
+                "num_devices": len(schedule),
+                "schedule": "; ".join(f"{dev}@{t}" for dev, t in sorted(schedule)),
+                "result":  round(H_beta, 4) > round(approx_ratio, 4)
+            })
 
 
-    schedule, dual_y, beta, H_beta = GreedyDualChargingMulti(DEVICES_TIMES, target_temp=TARGET_TEMP_DROP,
-                                                             target_humidity=TARGET_HUMIDITY_DROP)
+        except Exception as e:
+            print(f"Experiment failed: {e}")
+            experiment_results.append({
+                "target_temp_drop": round(target_temp, 2),
+                "target_humidity_drop": round(target_hum, 3),
+                "error": str(e)
+            })
 
-    cost_schedule = sum(get_cost(p) for p in schedule)
-    dual_value = 0.0
-    for A, val in dual_y.items():
-        temp_deficit = TARGET_TEMP_DROP - temp_drop_submodular(set(A)) if TARGET_TEMP_DROP else 0
-        humidity_deficit = TARGET_HUMIDITY_DROP - humidity_drop_submodular(set(A)) if TARGET_HUMIDITY_DROP else 0
-        dual_value += (temp_deficit + humidity_deficit) * val
+    # Save results to CSV
+    csv_file = "dual_charging_experiments_1.csv"
+    keys = experiment_results[0].keys()
+    with open(csv_file, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=keys)
+        writer.writeheader()
+        writer.writerows(experiment_results)
 
-    print("Chosen pruned schedule:")
-    for dev, t in sorted(schedule):
-        print(f"  Device: {dev}, Time: {t}")
+    print(f"\nSaved {len(experiment_results)} experiment results to {csv_file}")
 
-    print(f"\nTotal Cost: {cost_schedule:.2f}")
-    print(f"Dual Objective Value: {dual_value:.2f}")
-    print(f"β: {beta}, H_β: {H_beta:.3f}")
-
-    if dual_value > 0:
-        print(f"Approximation Ratio (ALG / Dual): {cost_schedule / dual_value:.3f}")
 
