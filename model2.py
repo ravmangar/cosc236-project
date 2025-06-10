@@ -242,19 +242,19 @@ def GreedyDualChargingMulti(pairs, target_temp=None, target_humidity=None):
     dual = {}
 
     #beta = max(temp_drop_submodular({p}) if target_temp else 0 for p in pairs)
-    # beta = 0.0
-    # for p in pairs:
-    #     temp_gain = temp_drop_submodular({p}) if target_temp else 0
-    #     hum_gain = humidity_drop_submodular({p}) if target_humidity else 0
-    #     total_gain = temp_gain + hum_gain
-    #     beta = max(beta, total_gain)
+    beta = 0.0
+    for p in pairs:
+        temp_gain = temp_drop_submodular({p}) if target_temp else 0
+        hum_gain = humidity_drop_submodular({p}) if target_humidity else 0
+        total_gain = temp_gain + hum_gain
+        beta = max(beta, total_gain)
     #
     # H_beta = harmonic_number(int(np.ceil(beta))) if beta > 0 else 1
-    beta = 0.0
-    if target_temp:
-        beta += target_temp
-    if target_humidity:
-        beta += target_humidity
+    # beta = 0.0
+    # if target_temp:
+    #     beta += target_temp
+    # if target_humidity:
+    #     beta += target_humidity
 
     H_beta = harmonic_number(int(np.ceil(beta))) if beta > 0 else 1
 
